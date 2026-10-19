@@ -7,9 +7,9 @@ use Advantage\Database;
 $account = requireAuth();
 
 $folder = $_GET['folder'] ?? 'INBOX';
-$page = (int)($_GET['page'] ?? 1);
-$perPage = (int)($_GET['perPage'] ?? 25);
-$search = trim($_GET['search'] ?? '');
+$page = max(1, min(10000, (int)($_GET['page'] ?? 1)));
+$perPage = max(1, min(100, (int)($_GET['perPage'] ?? 25)));
+$search = mb_substr(trim($_GET['search'] ?? ''), 0, 200);
 $forceRefresh = isset($_GET['refresh']) && $_GET['refresh'] === '1';
 
 $pdo = Database::getConnection();
@@ -306,5 +306,5 @@ try {
         'source' => 'live_synced_grouped'
     ]);
 } catch (\Exception $e) {
-    sendError('Error al obtener mensajes: ' . $e->getMessage(), 500);
+    sendServerError('Error al obtener mensajes', $e);
 }

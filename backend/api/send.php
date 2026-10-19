@@ -66,5 +66,5 @@ try {
 
     sendJson(['success' => true, 'message' => 'Correo enviado exitosamente']);
 } catch (\Exception $e) {
-    sendError('Error al enviar correo: ' . $e->getMessage(), 500);
+    sendServerError('No se pudo enviar el correo. Verifica los destinatarios e inténtalo de nuevo.', $e);
 }

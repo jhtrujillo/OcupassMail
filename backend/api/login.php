@@ -2,13 +2,13 @@
 require_once __DIR__ . '/bootstrap.php';
 
 use Advantage\Session;
+use Advantage\Security;
 use Advantage\ImapClient;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Verificar si hay sesión activa
     $account = Session::getAccount();
     if ($account) {
-        // Ocultar contraseña en la respuesta
         unset($account['password']);
         sendJson(['authenticated' => true, 'account' => $account]);
     } else {
@@ -19,31 +19,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = getJsonInput();
 
-    $email = trim($data['email'] ?? '');
-    $password = $data['password'] ?? '';
-    $displayName = trim($data['display_name'] ?? '');
+    $email = strtolower(trim($data['email'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+    $displayName = Security::oneLine(mb_substr(trim($data['display_name'] ?? ''), 0, 80));
 
-    // Servidores por defecto para DreamHost
-    $imapHost = trim($data['imap_host'] ?? 'imap.dreamhost.com');
-    $imapPort = (int)($data['imap_port'] ?? 993);
-    $smtpHost = trim($data['smtp_host'] ?? 'smtp.dreamhost.com');
-    $smtpPort = (int)($data['smtp_port'] ?? 587);
-
-    if (empty($email) || empty($password)) {
+    if (empty($email) || $password === '') {
         sendError('Correo electrónico y contraseña requeridos');
     }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        sendError('Correo electrónico inválido');
+    }
 
-    $accountConfig = [
+    // Límite de intentos: 5 por cuenta y 20 por IP cada 15 minutos
+    $ip = Security::clientIp();
+    $wait = max(
+        Security::rateLimitWait('login:email:' . $email, 5, 900),
+        Security::rateLimitWait('login:ip:' . $ip, 20, 900)
+    );
+    if ($wait > 0) {
+        sendError('Demasiados intentos fallidos. Intenta de nuevo en ' . ceil($wait / 60) . ' minuto(s).', 429);
+    }
+
+    // El servidor de correo se decide en el backend según el dominio.
+    // Los campos imap_host / smtp_host que envíe el navegador se ignoran.
+    $provider = Security::resolveProvider($email);
+    if (!$provider) {
+        sendError('Este dominio de correo no está habilitado en este webmail.', 403);
+    }
+
+    $accountConfig = array_merge($provider, [
         'email' => $email,
         'password' => $password,
         'display_name' => $displayName ?: explode('@', $email)[0],
-        'imap_host' => $imapHost,
-        'imap_port' => $imapPort,
         'imap_ssl' => true,
-        'smtp_host' => $smtpHost,
-        'smtp_port' => $smtpPort,
-        'smtp_secure' => ($smtpPort == 465 ? 'ssl' : 'tls')
-    ];
+    ]);
 
     // Probar conexión IMAP
     try {
@@ -51,10 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $imap->connect('INBOX');
         $imap->close();
     } catch (\Exception $e) {
-        sendError('Error de autenticación con el servidor de correo: ' . $e->getMessage(), 401);
+        Security::rateLimitHit('login:email:' . $email);
+        Security::rateLimitHit('login:ip:' . $ip);
+        error_log('[OctupassMail] Login fallido para ' . $email . ' desde ' . $ip . ' :: ' . $e->getMessage());
+        sendError('Correo o contraseña incorrectos, o el servidor de correo no está disponible.', 401);
     }
 
-    // Guardar en sesión
+    Security::rateLimitReset('login:email:' . $email);
+
+    // Guardar en sesión (contraseña cifrada, ID de sesión regenerado)
     Session::setAccount($accountConfig);
     unset($accountConfig['password']);
 
@@ -69,3 +83,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     Session::destroy();
     sendJson(['success' => true, 'message' => 'Sesión cerrada']);
 }
+
+sendError('Método no permitido', 405);

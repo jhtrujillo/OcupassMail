@@ -31,7 +31,7 @@ class SmtpClient {
             $mail->CharSet    = 'UTF-8';
 
             // Sender
-            $mail->setFrom($this->account['email'], $this->account['display_name'] ?? '');
+            $mail->setFrom($this->account['email'], Security::oneLine($this->account['display_name'] ?? ''));
 
             // Recipients (To)
             $toList = is_array($data['to']) ? $data['to'] : explode(',', $data['to']);
@@ -68,17 +68,17 @@ class SmtpClient {
             if (!empty($files)) {
                 foreach ($files as $file) {
                     if (isset($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
-                        $mail->addAttachment($file['tmp_name'], $file['name']);
+                        $mail->addAttachment($file['tmp_name'], Security::safeFilename($file['name']));
                     }
                 }
             }
 
             // In-Reply-To y References para hilos de conversación RFC-2822
             if (!empty($data['in_reply_to'])) {
-                $mail->addCustomHeader('In-Reply-To', trim($data['in_reply_to']));
+                $mail->addCustomHeader('In-Reply-To', Security::oneLine($data['in_reply_to']));
             }
             if (!empty($data['references'])) {
-                $mail->addCustomHeader('References', trim($data['references']));
+                $mail->addCustomHeader('References', Security::oneLine($data['references']));
             }
 
             // Content
@@ -91,7 +91,7 @@ class SmtpClient {
 
             // Guardar copia en la carpeta de Enviados (INBOX.Sent en DreamHost)
             try {
-                $ref = "{" . $this->account['imap_host'] . ":" . $this->account['imap_port'] . "/imap/ssl/novalidate-cert}";
+                $ref = Security::imapRef($this->account);
                 $imapStream = @imap_open($ref, $this->account['email'], $this->account['password']);
                 if ($imapStream) {
                     $sentFolder = $ref . "INBOX.Sent";

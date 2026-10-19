@@ -32,14 +32,7 @@ class Database {
         }
 
         // Carpeta privada para almacenar las bases de datos SQLite
-        $dataDir = __DIR__ . '/../data';
-        if (!is_dir($dataDir)) {
-            @mkdir($dataDir, 0755, true);
-            // Proteger directorio contra descargas directas vía web si no estuviera protegido
-            if (!file_exists($dataDir . '/.htaccess')) {
-                @file_put_contents($dataDir . '/.htaccess', "Deny from all\n");
-            }
-        }
+        $dataDir = Security::dataDir();
 
         $dbFile = $dataDir . '/' . $safeName . '.sqlite';
 
@@ -176,7 +169,7 @@ class Database {
             self::$instances[$safeName] = $pdo;
             return $pdo;
         } catch (PDOException $e) {
-            error_log("Fallo al inicializar base de datos SQLite para {$email}: " . $e->getMessage());
+            error_log("Fallo al inicializar base de datos SQLite para {$safeName}: " . $e->getMessage());
             return null;
         }
     }

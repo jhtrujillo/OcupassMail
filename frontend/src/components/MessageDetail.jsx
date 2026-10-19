@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Trash2, Mail, Star, Download, FileText, CornerUpLeft, CornerUpRight, Users, Printer, Eye, UserCheck, Sparkles, ArchiveRestore, Tag, Check, FolderInput, Folder } from 'lucide-react';
 import AttachmentPreviewModal from './AttachmentPreviewModal';
 import ContactCard from './ContactCard';
+import SafeEmailBody from './SafeEmailBody';
 
 export default function MessageDetail({
   message,
@@ -466,10 +467,7 @@ export default function MessageDetail({
 
                       <div className="prose dark:prose-invert max-w-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed overflow-x-auto">
                         {msg.html ? (
-                          <div
-                            dangerouslySetInnerHTML={{ __html: msg.html }}
-                            className="email-body-content"
-                          />
+                          <SafeEmailBody html={msg.html} className="email-body-content" />
                         ) : (
                           <pre className="font-sans whitespace-pre-wrap">{msg.plain}</pre>
                         )}
@@ -560,7 +558,7 @@ export default function MessageDetail({
 
                   <div className="prose dark:prose-invert max-w-none text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
                     {selectedThreadMsg.html ? (
-                      <div dangerouslySetInnerHTML={{ __html: selectedThreadMsg.html }} className="email-body-content" />
+                      <SafeEmailBody html={selectedThreadMsg.html} className="email-body-content" />
                     ) : (
                       <pre className="font-sans whitespace-pre-wrap">{selectedThreadMsg.plain}</pre>
                     )}
@@ -600,7 +598,7 @@ export default function MessageDetail({
                   >
                     <div className="prose dark:prose-invert max-w-none text-sm break-words overflow-x-auto">
                       {msg.html ? (
-                        <div dangerouslySetInnerHTML={{ __html: msg.html }} className="email-body-content" />
+                        <SafeEmailBody html={msg.html} className="email-body-content" />
                       ) : (
                         <pre className="font-sans whitespace-pre-wrap">{msg.plain}</pre>
                       )}

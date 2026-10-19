@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { 
   X, User, Mail, Moon, Sun, Monitor, Bell, BellOff, 
   FileText, Shield, Key, Save, Check 
@@ -198,7 +199,7 @@ export default function SettingsModal({
             <div className="mt-2 p-3 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl">
               <span className="text-[10px] text-gray-400 block mb-1 uppercase font-semibold">Vista Previa:</span>
               <div 
-                dangerouslySetInnerHTML={{ __html: localSignature }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(localSignature, { FORBID_TAGS: ['form', 'input', 'iframe', 'style'] }) }}
                 className="text-xs"
               />
             </div>

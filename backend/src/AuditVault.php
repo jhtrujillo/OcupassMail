@@ -88,8 +88,8 @@ class AuditVault {
             }
 
             // 2. Extraer metadatos de auditoría
-            $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? '');
-            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $ipAddress = Security::clientIp();
+            $userAgent = mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
             $deletedAt = date('Y-m-d H:i:s');
             $attachmentsMeta = !empty($detail['attachments']) ? json_encode($detail['attachments'], JSON_UNESCAPED_UNICODE) : null;
             $toRecipients = !empty($detail['to']) ? json_encode($detail['to'], JSON_UNESCAPED_UNICODE) : null;

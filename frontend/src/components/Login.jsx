@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Server, Shield, Lock, User, ChevronDown, ChevronUp, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 
 export default function Login({ onLoginSuccess }) {
@@ -7,12 +7,6 @@ export default function Login({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   
-  // Opciones avanzadas de servidor
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [imapHost, setImapHost] = useState('imap.dreamhost.com');
-  const [imapPort, setImapPort] = useState(993);
-  const [smtpHost, setSmtpHost] = useState('smtp.dreamhost.com');
-  const [smtpPort, setSmtpPort] = useState(587);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,16 +17,8 @@ export default function Login({ onLoginSuccess }) {
     const domain = val.split('@')[1]?.toLowerCase() || '';
     if (domain === 'gmail.com' || domain === 'googlemail.com') {
       setIsGmail(true);
-      setImapHost('imap.gmail.com');
-      setImapPort(993);
-      setSmtpHost('smtp.gmail.com');
-      setSmtpPort(465);
-    } else if (domain.includes('dreamhost') || domain.includes('advantascience') || domain.includes('gytc')) {
+    } else {
       setIsGmail(false);
-      setImapHost('imap.dreamhost.com');
-      setImapPort(993);
-      setSmtpHost('smtp.dreamhost.com');
-      setSmtpPort(587);
     }
   };
 
@@ -47,11 +33,7 @@ export default function Login({ onLoginSuccess }) {
         body: JSON.stringify({
           email,
           password,
-          display_name: displayName,
-          imap_host: imapHost,
-          imap_port: imapPort,
-          smtp_host: smtpHost,
-          smtp_port: smtpPort
+          display_name: displayName
         })
       });
 
@@ -152,69 +134,6 @@ export default function Login({ onLoginSuccess }) {
             />
           </div>
 
-          {/* Toggle de Configuración de Servidores */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center justify-between w-full text-xs font-medium text-blue-600 hover:text-blue-700 py-1"
-            >
-              <span className="flex items-center gap-1.5">
-                <Server className="w-4 h-4" /> Configuración de Servidores (DreamHost)
-              </span>
-              {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {showAdvanced && (
-              <div className="mt-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3 text-xs">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
-                    <label className="text-gray-500 block mb-1">Servidor IMAP</label>
-                    <input
-                      type="text"
-                      value={imapHost}
-                      onChange={(e) => setImapHost(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-gray-500 block mb-1">Puerto</label>
-                    <input
-                      type="number"
-                      value={imapPort}
-                      onChange={(e) => setImapPort(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
-                    <label className="text-gray-500 block mb-1">Servidor SMTP</label>
-                    <input
-                      type="text"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-gray-500 block mb-1">Puerto</label>
-                    <input
-                      type="number"
-                      value={smtpPort}
-                      onChange={(e) => setSmtpPort(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-800"
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-gray-400">
-                  Valores estándar para DreamHost: IMAP 993 (SSL) / SMTP 587 (STARTTLS).
-                </p>
-              </div>
-            )}
-          </div>
-
           <button
             type="submit"
             disabled={loading}
@@ -231,7 +150,7 @@ export default function Login({ onLoginSuccess }) {
         </form>
 
         <div className="mt-6 text-center text-xs text-gray-400 flex items-center justify-center gap-1">
-          <Shield className="w-3.5 h-3.5" /> Conexión directa y cifrada SSL/TLS con DreamHost
+          <Shield className="w-3.5 h-3.5" /> Conexión cifrada SSL/TLS con tu servidor de correo
         </div>
       </div>
     </div>

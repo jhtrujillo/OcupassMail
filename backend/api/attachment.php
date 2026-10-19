@@ -6,13 +6,13 @@ use Advantage\ImapClient;
 $account = requireAuth();
 
 $uid = (int)($_GET['uid'] ?? 0);
-$part = $_GET['part'] ?? '';
-$filename = $_GET['name'] ?? 'attachment';
+$part = (string)($_GET['part'] ?? '');
+$filename = \Advantage\Security::safeFilename($_GET['name'] ?? 'attachment');
 $encoding = (int)($_GET['encoding'] ?? 0);
 $folder = $_GET['folder'] ?? 'INBOX';
 $inline = isset($_GET['inline']) && $_GET['inline'] === '1';
 
-if (!$uid || !$part) {
+if (!$uid || !preg_match('/^[0-9]+(\.[0-9]+)*$/', $part)) {
     sendError('Parámetros de adjunto incompletos');
 }
 
@@ -34,10 +34,15 @@ try {
         case 'txt': $mimeType = 'text/plain; charset=utf-8'; break;
     }
 
-    $disposition = $inline ? 'inline' : 'attachment';
+    // Solo PDF e imágenes se pueden ver en línea; todo lo demás se descarga
+    $inlineSafe = in_array($ext, ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'], true);
+    $disposition = ($inline && $inlineSafe) ? 'inline' : 'attachment';
+    if ($disposition === 'attachment') {
+        header("Content-Security-Policy: default-src 'none'; sandbox");
+    }
 
     header('Content-Type: ' . $mimeType);
-    header('Content-Disposition: ' . $disposition . '; filename="' . basename($filename) . '"');
+    header('Content-Disposition: ' . $disposition . '; filename="' . $filename . '"');
     header('Expires: 0');
     header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
     header('Pragma: public');
@@ -45,5 +50,5 @@ try {
     echo $data;
     exit;
 } catch (\Exception $e) {
-    sendError('Error al descargar archivo adjunto: ' . $e->getMessage(), 500);
+    sendServerError('Error al descargar el archivo adjunto', $e);
 }

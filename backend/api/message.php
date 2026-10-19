@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'labels' => $labels
         ]);
     } catch (\Exception $e) {
-        sendError('Error al leer mensaje: ' . $e->getMessage(), 500);
+        sendServerError('Error al leer el mensaje', $e);
     }
 }
 
@@ -252,6 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         sendJson(['success' => true, 'action' => $action, 'affectedCount' => count($targets)]);
     } catch (\Exception $e) {
-        sendError('Error al actualizar mensaje: ' . $e->getMessage(), 500);
+        sendServerError('Error al actualizar el mensaje', $e);
     }
 }

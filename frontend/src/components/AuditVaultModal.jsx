@@ -4,6 +4,7 @@ import {
   ArchiveRestore, RefreshCw, X, AlertTriangle, FileText, CheckCircle2 
 } from 'lucide-react';
 import { apiRequest, API_BASE } from '../services/api';
+import SafeEmailBody from './SafeEmailBody';
 
 export default function AuditVaultModal({ isOpen, onClose, onRestored }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -197,7 +198,7 @@ export default function AuditVaultModal({ isOpen, onClose, onRestored }) {
               <div>
                 <input
                   type="password"
-                  placeholder="Ingresa PIN maestro (ej. 8822) o contraseña"
+                  placeholder="PIN maestro o contraseña del buzón"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                   autoFocus
@@ -388,10 +389,7 @@ export default function AuditVaultModal({ isOpen, onClose, onRestored }) {
                   {/* Cuerpo del Mensaje */}
                   <div className="flex-1 p-6 overflow-y-auto bg-white dark:bg-slate-900">
                     {detail.body_html ? (
-                      <div 
-                        className="prose dark:prose-invert max-w-none text-xs"
-                        dangerouslySetInnerHTML={{ __html: detail.body_html }} 
-                      />
+                      <SafeEmailBody html={detail.body_html} className="max-w-none text-xs text-slate-800 dark:text-slate-200" />
                     ) : (
                       <pre className="whitespace-pre-wrap font-sans text-xs text-slate-700 dark:text-slate-300">
                         {detail.body_plain || detail.snippet}

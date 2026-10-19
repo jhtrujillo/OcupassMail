@@ -23,3 +23,8 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+
+# Secretos y datos generados por el backend
+backend/data/.app_key
+backend/data/ratelimit/
+_respaldo_*.tar.gz

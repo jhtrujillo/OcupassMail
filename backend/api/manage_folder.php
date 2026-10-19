@@ -5,6 +5,10 @@ use Advantage\ImapClient;
 
 $account = requireAuth();
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    sendError('Método no permitido', 405);
+}
+
 $action = $_POST['action'] ?? '';
 $folderName = trim($_POST['name'] ?? '');
 
@@ -16,7 +20,7 @@ try {
     $imap = new ImapClient($account);
     $imap->connect('INBOX');
 
-    $ref = "{" . $account['imap_host'] . ":" . $account['imap_port'] . "/imap/ssl/novalidate-cert}";
+    $ref = \Advantage\Security::imapRef($account);
 
     // Obtener las carpetas actuales para detectar si el servidor usa el namespace INBOX.
     $existingBoxes = @imap_getmailboxes($imap->getStream(), $ref, "*");
@@ -33,7 +37,10 @@ try {
 
     if ($action === 'create') {
         // Sanitizar nombre de carpeta
-        $cleanFolderName = trim($folderName, " \t\n\r\0\x0B/.");
+        $cleanFolderName = trim(\Advantage\Security::oneLine($folderName), " \t\n\r\0\x0B/.");
+        if ($cleanFolderName === '' || mb_strlen($cleanFolderName) > 100 || preg_match('/[*%{}]/', $cleanFolderName)) {
+            sendError('Nombre de carpeta inválido');
+        }
 
         // Determinar candidatos de nombre según namespace
         $candidates = [];
@@ -72,5 +79,5 @@ try {
     $imap->close();
     sendJson(['success' => true, 'message' => "Carpeta '{$folderName}' creada"]);
 } catch (\Exception $e) {
-    sendError($e->getMessage(), 500);
+    sendServerError('No se pudo crear la carpeta', $e);
 }

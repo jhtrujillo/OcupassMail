@@ -28,8 +28,11 @@ if ($action === 'list') {
 // 2. Crear nueva etiqueta
 if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = getJsonInput();
-    $name = trim($input['name'] ?? '');
+    $name = mb_substr(trim($input['name'] ?? ''), 0, 60);
     $color = trim($input['color'] ?? '#3b82f6');
+    if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $color)) {
+        $color = '#3b82f6';
+    }
 
     if (empty($name)) {
         sendError('El nombre de la etiqueta es requerido');
@@ -41,7 +44,8 @@ if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = $pdo->lastInsertId();
         sendJson(['success' => true, 'label' => ['id' => (int)$id, 'name' => $name, 'color' => $color, 'count' => 0]]);
     } catch (\Exception $e) {
-        sendError('Ya existe una etiqueta con este nombre o hubo un error: ' . $e->getMessage());
+        error_log('[OctupassMail] Crear etiqueta: ' . $e->getMessage());
+        sendError('Ya existe una etiqueta con este nombre o hubo un error');
     }
 }
 

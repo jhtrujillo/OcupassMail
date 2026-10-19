@@ -23,12 +23,13 @@ class MimeBuilder {
         $boundaryMixed = '=_Mixed_' . md5(uniqid((string)mt_rand(), true));
         $boundaryAlt = '=_Alt_' . md5(uniqid((string)mt_rand(), true));
 
-        $from = $headers['from'] ?? 'webmail@localhost';
-        $to = $headers['to'] ?? '';
-        $cc = $headers['cc'] ?? '';
-        $subject = $headers['subject'] ?? '(Sin asunto)';
+        $clean = fn($v) => trim(str_replace(["\r", "\n", "\0"], ' ', (string)$v));
+        $from = $clean($headers['from'] ?? 'webmail@localhost');
+        $to = $clean($headers['to'] ?? '');
+        $cc = $clean($headers['cc'] ?? '');
+        $subject = $clean($headers['subject'] ?? '(Sin asunto)');
         $date = !empty($headers['date']) ? date('r', strtotime($headers['date'])) : date('r');
-        $messageId = !empty($headers['message_id']) ? $headers['message_id'] : ('<' . md5(uniqid((string)mt_rand(), true)) . '@octupassmail>');
+        $messageId = !empty($headers['message_id']) ? $clean($headers['message_id']) : ('<' . md5(uniqid((string)mt_rand(), true)) . '@octupassmail>');
 
         $hasAttachments = !empty($attachments);
 
@@ -77,8 +78,8 @@ class MimeBuilder {
         // Adjuntos
         if ($hasAttachments) {
             foreach ($attachments as $att) {
-                $filename = basename($att['filename'] ?? 'archivo');
-                $mimeType = $att['mime_type'] ?? 'application/octet-stream';
+                $filename = basename($clean($att['filename'] ?? 'archivo'));
+                $mimeType = preg_match('#^[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+$#', (string)($att['mime_type'] ?? '')) ? $att['mime_type'] : 'application/octet-stream';
                 $data = $att['data'] ?? '';
 
                 $out[] = "";

@@ -17,24 +17,44 @@ $action = $_GET['action'] ?? '';
 // 1. Desbloqueo de la Bóveda con PIN o Contraseña Maestra
 if ($action === 'unlock' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = getJsonInput();
-    $pin = trim($input['pin'] ?? '');
+    $pin = (string)($input['pin'] ?? '');
+    $bucket = 'vault:' . $account['email'];
 
-    // Se acepta PIN maestro '8822' o la contraseña actual de la cuenta
-    if ($pin === '8822' || $pin === $account['password']) {
-        $_SESSION['vault_unlocked'] = true;
+    // Máximo 5 intentos cada 15 minutos
+    $wait = \Advantage\Security::rateLimitWait($bucket, 5, 900);
+    if ($wait > 0) {
+        sendError('Demasiados intentos. La bóveda está bloqueada por ' . ceil($wait / 60) . ' minuto(s).', 429);
+    }
+
+    // Se acepta el PIN maestro configurado (como hash en config.php) o la contraseña del buzón.
+    $pinHash = (string)(\Advantage\Security::config()['vault_pin_hash'] ?? '');
+    $okPin = $pin !== '' && $pinHash !== '' && password_verify($pin, $pinHash);
+    $okPassword = $pin !== '' && hash_equals((string)$account['password'], $pin);
+
+    if ($okPin || $okPassword) {
+        \Advantage\Security::rateLimitReset($bucket);
+        session_regenerate_id(true);
+        $_SESSION['vault_unlocked'] = time();
         sendJson(['success' => true, 'message' => 'Bóveda de seguridad desbloqueada']);
     } else {
+        \Advantage\Security::rateLimitHit($bucket);
+        error_log('[OctupassMail] Intento fallido de desbloqueo de bóveda para ' . $account['email'] . ' desde ' . \Advantage\Security::clientIp());
         sendError('PIN o contraseña maestra de seguridad inválida', 401);
     }
 }
 
 // 2. Estado de autenticación de la Bóveda
+// La bóveda se vuelve a bloquear sola tras 15 minutos
+if (!empty($_SESSION['vault_unlocked']) && (time() - (int)$_SESSION['vault_unlocked']) > 900) {
+    unset($_SESSION['vault_unlocked']);
+}
+
 if ($action === 'status') {
     sendJson(['unlocked' => !empty($_SESSION['vault_unlocked'])]);
 }
 
 // 3. Bloqueo manual de la Bóveda
-if ($action === 'lock') {
+if ($action === 'lock' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     unset($_SESSION['vault_unlocked']);
     sendJson(['success' => true, 'unlocked' => false]);
 }
@@ -137,11 +157,12 @@ if ($action === 'download_attachment') {
         sendError('Archivo adjunto no encontrado', 404);
     }
 
-    $filename = basename($att['filename']);
-    $mimeType = $att['mime_type'] ?: 'application/octet-stream';
+    $filename = \Advantage\Security::safeFilename($att['filename']);
     $data = $att['file_data'];
 
-    header('Content-Type: ' . $mimeType);
+    // Siempre como descarga binaria: nunca se interpreta como HTML en nuestro dominio
+    header('Content-Type: application/octet-stream');
+    header("Content-Security-Policy: default-src 'none'; sandbox");
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Content-Length: ' . strlen($data));
     header('Expires: 0');
@@ -155,7 +176,7 @@ if ($action === 'download_attachment') {
 if ($action === 'restore' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = getJsonInput();
     $archiveId = (int)($input['archive_id'] ?? 0);
-    $targetFolder = trim($input['target_folder'] ?? 'INBOX');
+    $targetFolder = \Advantage\Security::oneLine($input['target_folder'] ?? 'INBOX') ?: 'INBOX';
 
     if (!$archiveId) {
         sendError('ID de archivo requerido');
@@ -219,7 +240,7 @@ if ($action === 'restore' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => "Correo '{$emailRow['subject']}' restaurado exitosamente a {$targetFolder}"
         ]);
     } catch (\Exception $e) {
-        sendError('Error al restaurar correo en IMAP: ' . $e->getMessage(), 500);
+        sendServerError('Error al restaurar el correo en el servidor', $e);
     }
 }
 

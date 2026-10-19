@@ -6,7 +6,8 @@ export const API_BASE = (function() {
 })();
 
 export async function apiRequest(endpoint, options = {}) {
-  const defaultHeaders = {};
+  // Cabecera obligatoria para el backend (protección CSRF)
+  const defaultHeaders = { 'X-Requested-With': 'OctupassMail' };
   
   if (!(options.body instanceof FormData)) {
     defaultHeaders['Content-Type'] = 'application/json';

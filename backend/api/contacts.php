@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         sendJson(['success' => true, 'message' => "Contacto '{$contactName}' guardado exitosamente"]);
     } catch (\Exception $e) {
-        sendError('Error al guardar contacto: ' . $e->getMessage(), 500);
+        sendServerError('Error al guardar el contacto', $e);
     }
 }
 
@@ -101,6 +101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
         sendJson(['success' => true, 'message' => 'Contacto eliminado']);
     } catch (\Exception $e) {
-        sendError('Error al eliminar contacto: ' . $e->getMessage(), 500);
+        sendServerError('Error al eliminar el contacto', $e);
     }
 }

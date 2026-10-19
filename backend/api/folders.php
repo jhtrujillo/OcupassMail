@@ -64,6 +64,6 @@ try {
 
     sendJson(['folders' => $folders, 'source' => $forceRefresh ? 'live' : 'cached_or_synced']);
 } catch (\Exception $e) {
-    sendError('Error al obtener carpetas: ' . $e->getMessage(), 500);
+    sendServerError('Error al obtener carpetas', $e);
 }
 

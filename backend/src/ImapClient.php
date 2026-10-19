@@ -11,10 +11,7 @@ class ImapClient {
     }
 
     private function getMailboxString(string $folder = 'INBOX'): string {
-        $flags = '/imap/ssl/novalidate-cert';
-        $host = $this->account['imap_host'];
-        $port = $this->account['imap_port'];
-        return "{" . "{$host}:{$port}{$flags}" . "}" . $folder;
+        return Security::imapRef($this->account) . $folder;
     }
 
     public function connect(string $folder = 'INBOX'): bool {
@@ -43,7 +40,7 @@ class ImapClient {
 
         if (!$this->stream) {
             $err = imap_last_error();
-            throw new \Exception("Error al conectar con IMAP ({$mailbox}): " . ($err ?: 'Credenciales inválidas o servidor inalcanzable'));
+            throw new \Exception('Error al conectar con IMAP: ' . ($err ?: 'Credenciales inválidas o servidor inalcanzable'));
         }
 
         $this->currentFolder = $folder;
@@ -65,7 +62,7 @@ class ImapClient {
             $this->connect('INBOX');
         }
 
-        $ref = "{" . $this->account['imap_host'] . ":" . $this->account['imap_port'] . "/imap/ssl/novalidate-cert}";
+        $ref = Security::imapRef($this->account);
         $list = @imap_getmailboxes($this->stream, $ref, "*");
         
         $folders = [];
@@ -136,7 +133,8 @@ class ImapClient {
 
         if (!empty($search)) {
             // Búsqueda IMAP
-            $criteria = 'TEXT "' . addslashes($search) . '"';
+            $search = mb_substr(str_replace(["\r", "\n", "\0", '"', '\\'], ' ', $search), 0, 200);
+            $criteria = 'TEXT "' . $search . '"';
             $msgNums = @imap_search($this->stream, $criteria);
             if (!$msgNums) {
                 return ['messages' => [], 'total' => 0, 'page' => $page, 'perPage' => $perPage];
