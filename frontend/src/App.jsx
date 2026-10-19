@@ -363,6 +363,9 @@ export default function App() {
       const res = await apiRequest(`messages.php?${params.toString()}`);
       setMessages(res.messages || []);
       setTotalMessages(res.total || 0);
+      if (forceRefresh) {
+        loadFolders(true);
+      }
     } catch (err) {
       console.error('Error cargando mensajes:', err);
     } finally {

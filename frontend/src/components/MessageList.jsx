@@ -35,6 +35,8 @@ export default function MessageList({
   const touchStartY = useRef(0);
   const scrollContainerRef = useRef(null);
   const wheelCooldown = useRef(0);
+  const wheelDeltaAcc = useRef(0);
+  const wheelResetTimer = useRef(null);
 
   const totalPages = Math.ceil(total / perPage) || 1;
   const startCount = total === 0 ? 0 : 1;
@@ -51,31 +53,41 @@ export default function MessageList({
     }
   };
 
-  // 1. Gesto en Computador: Rueda del mouse hacia arriba estando en el tope (scrollTop === 0)
+  // 1. Gesto en Computador: Rueda del mouse hacia arriba estando en el tope
   const handleWheel = (e) => {
     if (loading || pullRefreshing || !onRefresh) return;
     const container = scrollContainerRef.current;
-    if (!container) return;
+    const isAtTop = !container || container.scrollTop <= 5;
 
-    // Si ya estamos arriba de todo y el usuario gira la rueda hacia arriba con intención (e.deltaY < -25)
-    if (container.scrollTop <= 0 && e.deltaY < -25) {
-      const now = Date.now();
-      // Evitar múltiples disparos seguidos (cooldown de 3 segundos)
-      if (now - wheelCooldown.current > 3000) {
-        wheelCooldown.current = now;
-        setPullRefreshing(true);
-        // Llamar a refrescar correo
-        Promise.resolve(onRefresh(folder, page, '', true)).finally(() => {
-          setTimeout(() => setPullRefreshing(false), 600);
-        });
+    // Si está en el tope y gira hacia arriba (deltaY negativo)
+    if (isAtTop && e.deltaY < 0) {
+      wheelDeltaAcc.current += Math.abs(e.deltaY);
+      clearTimeout(wheelResetTimer.current);
+      wheelResetTimer.current = setTimeout(() => {
+        wheelDeltaAcc.current = 0;
+      }, 400);
+
+      // Con cualquier giro claro hacia arriba (acumulado >= 10), disparar verificación
+      if (wheelDeltaAcc.current >= 10) {
+        wheelDeltaAcc.current = 0;
+        const now = Date.now();
+        if (now - wheelCooldown.current > 1800) {
+          wheelCooldown.current = now;
+          setPullRefreshing(true);
+          Promise.resolve(onRefresh(folder, 1, '', true)).finally(() => {
+            setTimeout(() => setPullRefreshing(false), 700);
+          });
+        }
       }
+    } else if (e.deltaY > 0) {
+      wheelDeltaAcc.current = 0;
     }
   };
 
   // 2. Gesto en Celular: Pull-to-refresh deslizando el dedo hacia abajo
   const handleTouchStart = (e) => {
     const container = scrollContainerRef.current;
-    if (container && container.scrollTop <= 0) {
+    if (!container || container.scrollTop <= 5) {
       touchStartY.current = e.touches[0].clientY;
       setIsPulling(true);
     } else {
@@ -87,28 +99,34 @@ export default function MessageList({
   const handleTouchMove = (e) => {
     if (!isPulling || loading || pullRefreshing || !touchStartY.current) return;
     const container = scrollContainerRef.current;
-    if (container && container.scrollTop > 0) return;
+    if (container && container.scrollTop > 5) {
+      setIsPulling(false);
+      setPullY(0);
+      return;
+    }
 
     const currentY = e.touches[0].clientY;
     const diff = currentY - touchStartY.current;
     if (diff > 0) {
-      // Amortiguación suave estilo iOS/Android (fricción)
-      const dampened = Math.min(Math.pow(diff, 0.85) * 1.5, 90);
+      // Amortiguación suave y progresiva
+      const dampened = Math.min(Math.pow(diff, 0.85) * 1.6, 85);
       setPullY(dampened);
+    } else {
+      setPullY(0);
     }
   };
 
   const handleTouchEnd = () => {
     if (!isPulling) return;
     setIsPulling(false);
-    if (pullY >= 55 && !pullRefreshing && onRefresh) {
+    if (pullY >= 35 && !pullRefreshing && onRefresh) {
       setPullRefreshing(true);
-      setPullY(45);
-      Promise.resolve(onRefresh(folder, page, '', true)).finally(() => {
+      setPullY(44);
+      Promise.resolve(onRefresh(folder, 1, '', true)).finally(() => {
         setTimeout(() => {
           setPullRefreshing(false);
           setPullY(0);
-        }, 500);
+        }, 600);
       });
     } else {
       setPullY(0);
@@ -167,7 +185,9 @@ export default function MessageList({
   const allSelected = messages.length > 0 && selectedUids.length === messages.length;
 
   return (
-    <div className={`flex-1 flex flex-col bg-white dark:bg-[#111318] ${
+    <div 
+      onWheel={handleWheel}
+      className={`flex-1 flex flex-col bg-white dark:bg-[#111318] ${
       layoutMode === 'tripanel' ? 'h-full border-r border-slate-200/80 dark:border-slate-800/80' : 'md:rounded-2xl border-0 md:border md:border-slate-200/80 dark:md:border-slate-800/80 shadow-2xs md:m-2 md:ml-0'
     } overflow-hidden w-full max-w-full`}>
       {/* Barra de herramientas superior */}
@@ -418,23 +438,23 @@ export default function MessageList({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 overflow-y-auto relative"
+        className="flex-1 overflow-y-auto relative overscroll-y-contain"
       >
         {/* Indicador visual de Pull-to-Refresh y Rueda hacia arriba */}
         {(pullY > 0 || pullRefreshing) && (
           <div 
             style={{ 
-              height: pullRefreshing ? '48px' : `${pullY}px`,
+              height: pullRefreshing ? '46px' : `${Math.max(pullY, 32)}px`,
               transition: isPulling ? 'none' : 'height 0.25s ease-out'
             }}
-            className="w-full flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-[#14161c] border-b border-slate-200/60 dark:border-slate-800/60"
+            className="w-full flex items-center justify-center overflow-hidden bg-blue-50/90 dark:bg-blue-950/40 border-b border-blue-200/60 dark:border-blue-900/50"
           >
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 py-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300 py-1.5">
               <RefreshCw className={`w-4 h-4 text-blue-600 dark:text-blue-400 ${pullRefreshing ? 'animate-spin' : ''}`} />
               <span>
                 {pullRefreshing 
-                  ? 'Verificando si hay correos nuevos...' 
-                  : pullY >= 55 
+                  ? 'Verificando correos nuevos...' 
+                  : pullY >= 35 
                     ? 'Suelta para verificar correos' 
                     : 'Desliza hacia abajo para verificar'}
               </span>
