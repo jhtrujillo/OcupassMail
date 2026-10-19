@@ -91,16 +91,16 @@ class SmtpClient {
 
             // Guardar copia en la carpeta de Enviados (INBOX.Sent en DreamHost)
             try {
-                $ref = Security::imapRef($this->account);
-                $imapStream = @imap_open($ref, $this->account['email'], $this->account['password']);
-                if ($imapStream) {
-                    $sentFolder = $ref . "INBOX.Sent";
-                    $rfcMessage = $mail->getSentMIMEMessage();
-                    if (!empty($rfcMessage)) {
-                        @imap_append($imapStream, $sentFolder, $rfcMessage, "\\Seen");
+                $imapClient = new ImapClient($this->account);
+                $rfcMessage = $mail->getSentMIMEMessage();
+                if (!empty($rfcMessage)) {
+                    // Intentar INBOX.Sent (DreamHost) o Sent (Gmail/otros)
+                    $sentSuccess = $imapClient->appendMessage('INBOX.Sent', $rfcMessage, "\\Seen");
+                    if (!$sentSuccess) {
+                        $imapClient->appendMessage('Sent', $rfcMessage, "\\Seen");
                     }
-                    @imap_close($imapStream);
                 }
+                $imapClient->close();
             } catch (\Exception $appendEx) {
                 // Si falla el guardado en Sent, no interrumpir el éxito del envío
             }

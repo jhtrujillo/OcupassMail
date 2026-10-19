@@ -7,6 +7,7 @@
         }
     ],
     "require": {
-        "phpmailer/phpmailer": "^7.1"
+        "phpmailer/phpmailer": "^7.1",
+        "directorytree/imapengine": "^1.25"
     }
 }

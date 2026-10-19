@@ -20,21 +20,6 @@ try {
     $imap = new ImapClient($account);
     $imap->connect('INBOX');
 
-    $ref = \Advantage\Security::imapRef($account);
-
-    // Obtener las carpetas actuales para detectar si el servidor usa el namespace INBOX.
-    $existingBoxes = @imap_getmailboxes($imap->getStream(), $ref, "*");
-    $usesInboxPrefix = false;
-    if (is_array($existingBoxes)) {
-        foreach ($existingBoxes as $b) {
-            $c = str_replace($ref, '', $b->name);
-            if (stripos($c, 'INBOX.') === 0) {
-                $usesInboxPrefix = true;
-                break;
-            }
-        }
-    }
-
     if ($action === 'create') {
         // Sanitizar nombre de carpeta
         $cleanFolderName = trim(\Advantage\Security::oneLine($folderName), " \t\n\r\0\x0B/.");
@@ -42,7 +27,16 @@ try {
             sendError('Nombre de carpeta inválido');
         }
 
-        // Determinar candidatos de nombre según namespace
+        // Obtener carpetas para ver si el servidor usa el prefijo INBOX.
+        $existing = $imap->getFolders();
+        $usesInboxPrefix = false;
+        foreach ($existing as $b) {
+            if (stripos($b['raw'] ?? '', 'INBOX.') === 0) {
+                $usesInboxPrefix = true;
+                break;
+            }
+        }
+
         $candidates = [];
         if ($usesInboxPrefix) {
             $candidates[] = 'INBOX.' . $cleanFolderName;
@@ -53,22 +47,16 @@ try {
         }
 
         $created = false;
-        $lastErr = '';
-
-        foreach ($candidates as $candidate) {
-            $targetMailbox = $ref . $candidate;
-            $res = @imap_createmailbox($imap->getStream(), $targetMailbox);
-            if ($res) {
+        foreach ($candidates as $cand) {
+            if ($imap->createFolder($cand)) {
                 $created = true;
-                $folderName = $candidate;
+                $folderName = $cand;
                 break;
-            } else {
-                $lastErr = imap_last_error();
             }
         }
 
         if (!$created) {
-            throw new \Exception('No se pudo crear la carpeta: ' . ($lastErr ?: 'Error desconocido'));
+            throw new \Exception('No se pudo crear la carpeta en el servidor de correo');
         }
 
         // Invalidar caché de carpetas en sesión

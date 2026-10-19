@@ -161,8 +161,7 @@ try {
     $imap = new ImapClient($account);
     
     // Obtener total de mensajes del servidor
-    $imap->connect($folder);
-    $realTotal = @imap_num_msg($imap->getStream());
+    $realTotal = $imap->getNumMsg($folder);
     if ($realTotal <= 0) {
         $realTotal = 0;
     }
