@@ -1,0 +1,12 @@
+{
+    "name": "advantage/webmail",
+    "description": "Advantage Webmail Client",
+    "authors": [
+        {
+            "name": "Advantage"
+        }
+    ],
+    "require": {
+        "phpmailer/phpmailer": "^7.1"
+    }
+}
